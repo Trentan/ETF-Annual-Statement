@@ -13,7 +13,7 @@ Label,Description,Type,Account
 20F,Franking Credits NZ companies,CR,Income:Distribution:20F
 20O,Foreign income tax offset,CR,Income:Distribution:20O
 Non-attributable,,DB,Income:Distribution:Non-attributable
-Non-assessable non-exempt amount,,DB,Distribution: Non-assessable
+Non-assessable non-exempt amount,,DB,Distribution:Non-assessable
 Net exempt income,,skip,
 Other non-attributable amounts,,skip,
 Total Non-assessable amounts,,skip,
