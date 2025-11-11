@@ -1,16 +1,14 @@
 # © flywire 2023, CC BY-SA
 """Get ETF Tax Contribution Splits from Annual Transaction Statement pdf."""
 
-from dateutil import parser
 import argparse
 import csv
-import datetime
 import os
 import re
 import sys
+
 import tabula
-import tempfile
-import time
+from dateutil import parser
 
 
 def get_args():
@@ -84,6 +82,7 @@ def txn_split(key, account, amount, balance):
 def part_a(acc_dict, ats_list, idx_b, key, balance, writer):
     """form transaction splits and balance - Part A"""
     # Get amount and label columns
+    global ncg, label_c, c
     for i, r in enumerate(ats_list[4]):
         if "amount" in r.lower():
             c = i
@@ -93,7 +92,7 @@ def part_a(acc_dict, ats_list, idx_b, key, balance, writer):
         if (
             r[c]
             and r[c] != "$0.00"
-            and re.compile(r"^\d{2}\D$").search(r[label_c]) != None
+            and re.compile(r"^\d{2}\D$").search(r[label_c]) is not None
         ):
             typ = acc_dict.get(r[label_c]).get("Type")
             amount = r[c].replace(",", "")[1:]
@@ -236,7 +235,7 @@ def main():
             balance = 0
             balance = part_a(acc_dict, ats_list, idx_b, key, balance, writer)
             balance = part_b(acc_dict, ats_list, idx_b, key, balance, writer)
-            _ = close_txn(acc_dict, key, balance, writer)
+            close_txn(acc_dict, key, balance, writer)
         print("done.")
     except IndexError:
         print("Unknown statement structure, processing failed.")
