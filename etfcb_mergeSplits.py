@@ -1,39 +1,25 @@
-import glob
-import pandas as pd
 import os
+import glob
 
-# Output file (note the uppercase 'Tax')
-output_dir = "Tax"
-output_file = os.path.join(output_dir, "all_splits.csv")
+input_folder = r"Tax\Statements"
+output_file = r"Tax\combined_split_statements.csv"
 
-# Ensure output folder exists
-os.makedirs(output_dir, exist_ok=True)
-
-# Find all matching split CSVs in the Tax folder
-csv_files = glob.glob(os.path.join(output_dir, "*split.csv"))
-print("Current working directory:", os.getcwd())
-print("Found CSV files:", csv_files)
+csv_files = glob.glob(os.path.join(input_folder, "*split.csv"))
 
 if not csv_files:
-    print("⚠️ No split CSV files found — check your folder path or file names.")
+    print("⚠️ No matching CSV files found.")
 else:
-    csv_files.sort()
-    combined = []
+    print(f"📂 Combining {len(csv_files)} split CSV files...\n")
 
-    for i, file in enumerate(csv_files):
-        print(f"Processing: {file}")
-        df = pd.read_csv(file)
+    with open(output_file, "w", encoding="utf-8") as outfile:
+        for file in csv_files:
+            print(f"→ Adding {os.path.basename(file)}")
+            with open(file, "r", encoding="utf-8") as infile:
+                for line in infile:
+                    line = line.strip()
+                    if not line:
+                        continue  # skip blanks
+                    # Add the filename as a new last column
+                    outfile.write(f"{line}\n")
 
-        # Skip header rows except for first file
-        if i == 0:
-            combined.append(df)
-        else:
-            if "Entity" in df.columns[0]:
-                combined.append(df.iloc[1:])
-            else:
-                combined.append(df)
-
-    merged_df = pd.concat(combined, ignore_index=True)
-    merged_df.to_csv(output_file, index=False)
-
-    print(f"✅ Merged {len(csv_files)} files into {output_file}")
+    print(f"\n✅ Combined file saved to: {output_file}")

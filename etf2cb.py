@@ -32,11 +32,11 @@ def get_tabular_area(filename):
             if r[0] != '':
                 e = r[0]
                 area.append([e])
-                ie = len(area)-1
+                ie = len(area) - 1
             if r[1] != '':
                 p = r[1]
                 area[ie].append([p])
-                ip = len(area[ie])-1
+                ip = len(area[ie]) - 1
                 area[ie][ip].append([])
             area[ie][ip][1].append([int(r[c]) for c in range(2, 6)])
     return area
@@ -90,7 +90,8 @@ def part_a(acc_dict, ats_list, idx_b, key, balance, writer):
             label_c = i
     for r in ats_list[5:idx_b]:
         if (
-            r[c]
+            c < len(r)
+            and r[c]
             and r[c] != "$0.00"
             and re.compile(r"^\d{2}\D$").search(r[label_c]) is not None
         ):
@@ -104,7 +105,7 @@ def part_a(acc_dict, ats_list, idx_b, key, balance, writer):
                 ncg = amount
             elif label == "18H":
                 amount = "-" + amount
-                c2d = lambda x: str(x)[:-2]+'.'+str(x)[-2:]
+                c2d = lambda x: str(x)[:-2] + '.' + str(x)[-2:]
                 amount = c2d((int(amount.replace(".", "")) - int(ncg.replace(".", ""))))
                 account = "Income:Distribution:18H:GCTGrossUp"
             if label != "20M":
@@ -126,12 +127,17 @@ def part_b(acc_dict, ats_list, idx_b, key, balance, writer):
         if skip:
             if "Non-assessable Amounts".upper() in r[0].upper():
                 skip = False
-        else:
-            for c in [1, 3]:
+            if "Gross Amount".upper() in r[0].upper():
+                skip = False
+            if "AMIT cost base net increase amount".upper() in r[0].upper():
+                skip = False
+        if not skip:
+            for c in [1, len(r)-1]:
+            # for c in [1, 3]:
                 if (
-                    r[c]
-                    and r[c] != "$0.00"
-                    and re.compile(r"^\$?[0-9,]*\.[0-9]{2}$").search(r[c]) != None
+                        r[c]
+                        and r[c] != "$0.00"
+                        and re.compile(r"^\$?[0-9,]*\.[0-9]{2}$").search(r[c]) != None
                 ):
                     # Write non-zero amounts
                     # The tax-acc key (label) is a subset of r[c] ie ats_list[0]
@@ -163,6 +169,7 @@ def part_b(acc_dict, ats_list, idx_b, key, balance, writer):
                     account = acc_dict.get(label).get("Account")
                     row, balance = txn_split(key, account, amount, balance)
                     _ = writer.writerow(row)
+                    break # wrote the row, no further processing needed
                 else:
                     pass
                     # print('Skip', c, r)
@@ -201,13 +208,22 @@ def main():
             idx_area = [i[0].lower() for i in area].index(args.area.lower())
             for j in range(1, len(area[idx_area])):
                 tabula.convert_into(
-                    pdf, tmpf, pages=area[idx_area][j][0], area=area[idx_area][j][1]
+                    pdf, tmpf, pages=area[idx_area][j][0], area=area[idx_area][j][1], force_subprocess=True
                 )
                 with open(tmpf, "r") as sfile:
                     mode = "w" if j == 1 else "a"
                     with open(cdf, mode) as tfile:
                         tfile.write(sfile.read())
             os.remove(tmpf)
+
+            # Modify CSV if file type is 'vaneck'
+            if getattr(args, 'area', '').lower() == 'vaneck':
+                with open(cdf, "r") as file:
+                    content = file.read()
+                content = content.replace("Part B", "TEMP_PART").replace("Part C", "Part B").replace("TEMP_PART", "Part A")
+                with open(cdf, "w") as file:
+                    file.write(content)
+
         csvs = cdf[:-4] + "_split.csv"
         acc_dict = csv_dictionary("tax-acc.csv")
         # Catch exception when acc_dict not found
@@ -219,6 +235,8 @@ def main():
         # Get statement structure
         idx_b, _ = row_idx(ats_list, "Part B")[0]
         # # Validate
+        # if idx b not there...
+        # Item,Amount,"Tax return
         # idx_item = row_idx(ats_list, "Item")
         # if idx_item[0][0] != 4:
         #     print("Part A header - Invalid")
@@ -226,7 +244,7 @@ def main():
         #     print("Part B header - Invalid")
         # Row key
         key = []
-        key.append(re.sub(r"\s+", '', ats_list[1][0])) # remove whitespace
+        key.append(re.sub(r"\s+", '', ats_list[1][0]))  # remove whitespace
         key.append(parser.parse(ats_list[2][0]).date().strftime("%d/%m/%Y"))
         key.append(ats_list[0][0])
         # Do parts

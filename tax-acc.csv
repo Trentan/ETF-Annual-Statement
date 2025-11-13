@@ -21,11 +21,20 @@ Gross Amount,,skip,
 Gross cash distribution,,skip,
 AMIT cost base net amount - excess,,DB,Asset:Shares:CostBase
 AMIT cost base net amount - shortfall,,CR,Asset:Shares:CostBase
+AMIT cost base net amount – shortfall,,CR,Asset:Shares:CostBase
+AMIT cost base net amount – excess,,DB,Asset:Shares:CostBase
+AMIT cost base net increase amount,,CR,Asset:Shares:CostBase
+AMIT cost base net decrease amount,,DB,Asset:Shares:CostBase
 TFN amounts withheld,,CR,Income:Distribution:TaxWithheld
 non-resident withholding tax,,skip,
+Total on-assessable amounts,,skip,
 - Interest / dividend amounts withheld,,CR,Income:Distribution:TaxWithheld
 - Fund payment amounts withheld,,CR,Income:Distribution:TaxWithheld
 Less other expenses,,CR,Expense
 Wrap,,CR,Expense:Wrap
 Cash Distribution,,CR,Income:Distribution
 Rounding,,CR,Income:Distribution:Rounding
+Franking credit tax offset from Australian resident companies,,skip,
+Foreign income tax offset - Other net foreign source income,,skip,
+Australian franking credit from a New Zealand franking company,,skip,
+Total tax offsets,,skip,
