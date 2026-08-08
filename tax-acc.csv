@@ -32,7 +32,7 @@ Total on-assessable amounts,,skip,
 - Fund payment amounts withheld,,CR,Income:Distribution:TaxWithheld
 Less other expenses,,CR,Expense
 Wrap,,CR,Expense:Wrap
-Cash Distribution,,CR,Income:Distribution
+Cash Distribution,,CR,Equity:Clearing:Distribution
 Rounding,,CR,Income:Distribution:Rounding
 Franking credit tax offset from Australian resident companies,,skip,
 Foreign income tax offset - Other net foreign source income,,skip,

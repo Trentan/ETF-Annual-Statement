@@ -162,11 +162,18 @@ def part_b(acc_dict, ats_list, idx_b, key, balance, writer):
                     label = label_list[0]
                     typ = acc_dict.get(label.upper()).get("Type")
                     amount = r[c].replace(",", "")[1:]
+                    account = acc_dict.get(label).get("Account")
+
+                    if r[0].strip().lower() == "gross amount":
+                        has_net_cash = any("net cash distribution" in " ".join(row).lower() for row in ats_list)
+                        if not has_net_cash:
+                            typ = "CR"
+                            account = acc_dict.get("CASH DISTRIBUTION", {}).get("Account", "Equity:Clearing:Distribution")
+
                     if typ.lower() == "skip".lower():
                         break
                     if typ == "DB":
                         amount = "-" + amount
-                    account = acc_dict.get(label).get("Account")
                     row, balance = txn_split(key, account, amount, balance)
                     _ = writer.writerow(row)
                     break # wrote the row, no further processing needed

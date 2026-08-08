@@ -1,138 +1,129 @@
-# ETF-Annual-Statement
+# ETF & Share Dividend Statement Parser for GnuCash
 
-Reporting for multiple Australian ETF Annual Tax Statements.
-
-## Objectives
-
-* Read the data from the Australian ETF Annual Tax Statements and reformat it as
-a split transaction to load into a cashbook (eg GnuCash).
-* If the pdf format is not directly supported the intermediate csv file can be
-reworked using the example file as a template before loading the csv file.
-
-## Installation
-
-Most Windows users will download `etf2cb.exe` and the `*.csv` files
-then skip to the next section.
+Automated extraction, tax component splitting, and consolidation of Australian ETF Annual Tax Statements and Individual Share Dividend Advices for import into GnuCash.
 
 ---
 
-Python software can optionally be installed in a virtual environment to
-eliminate system conflicts as described
-[here](https://docs.python.org/3/library/venv.html).
-eg in the desired folder for Windows:
+## Quick Start (How-To Guide)
 
-```
-python -m venv ./venv/etf2cb
-.\venv\etf2cb\scripts\activate
-cd .\venv\etf2cb
-```
-Use `deactivate` to return to the normal system.
+### 1. Process ETF Annual Tax Statements
 
-```
-pip install git+https://github.com/flywire/ETF-Annual-Statement.git@main
+Place your annual PDF tax statements (Vanguard, BetaShares, GlobalX, VanEck, iShares) into `Tax\Statements\`, then run:
+
+```powershell
+python etf2cb_runFolder.py
+python etfcb_mergeSplits.py
 ```
 
-### Troubleshooting
+- **`etf2cb_runFolder.py`**: Scans all PDF statements in `Tax\Statements\`, extracts component tables via Tabula, and generates individual `*_split.csv` files.
+- **`etfcb_mergeSplits.py`**: Validates double-entry transaction balances, formats header rows, and consolidates all ETF splits into:
+  `Tax\combined_split_statements.csv`
 
-This package uses [tabula-py](https://github.com/chezou/tabula-py) under the
-hood, which itself is a wrapper for
-[tabula-java](https://github.com/tabulapdf/tabula-java).
+---
 
-Windows & Linux users will need a copy of Java installed. You can download
-Java [here](https://www.java.com/download/).
+### 2. Process Individual Company Dividend Statements
 
-## Usage
+Place individual share dividend PDF advices (e.g. ASK, CSL, DMP, GYG, SOL, WTC) into `Tax\IndidividualPayments\`, then run:
 
-Start a command prompt.
-
-* run `etf2cb` if you downloaded the Windows executable
-* Alternatively, run under python, for example:
-    `python etf2cb.py`
-
-```
-usage: etf2cb [-h] filename [area]
-
-Extract ETF Annual Statement transaction component splits
-
-positional arguments:
-  filename    Provide filename to extract
-  area        Table area reference required for pdf file
-
-options:
-  -h, --help  show this help message and exit
-
-Filenames with .csv extension are processed directly without pdf extract
+```powershell
+python process_individual_payments.py
 ```
 
-Many things can fail with this automated process so users should validate the
-output manually.
-Firstly, check the total of all deposit amounts is zero.
+- **`process_individual_payments.py`**: Dynamically extracts franked dividends, unfranked income, franking credits, and cash payment amounts without hardcoded values.
+- Generates a separate, ready-to-import CSV at:
+  `Tax\IndidividualPayments\individual_payments_splits.csv`
 
-## Advanced Commands
+---
 
-Wildcards for a folder:
+## Double-Entry Accounting & Clearing Account Setup
 
-    for %f in (tax\v*.pdf) do etf2cb %f vanguard
+### Why `Equity:Clearing:Distribution` is Used
 
-Concatenate files:
-    
-    echo Entity,Date,Description,Account,Deposit > tax\all_splits.csv & type *split.csv >> tax\all_splits.csv
+In double-entry bookkeeping (especially for trusts), annual tax statements reclassify cash received during the year into specific ATO tax return categories (`13C`, `13U`, `18H`, `20E/20M`, etc.).
 
+To prevent direct debit transactions from cluttering your parent `Income:Distribution` account, cash balancing splits are mapped to a dedicated clearing account: **`Equity:Clearing:Distribution`** (configured in `tax-acc.csv`).
 
-## Customising
+#### How the Workflow Functions:
 
-Amounts will be extracted from the pdf using the area reference unless run on
-a `.csv` file.
+1. **During the Financial Year (Quarterly Payouts)**:
+   When cash payouts land in your bank account, record them as:
+   - **Debit**: `Asset:Bank` (Cash received)
+   - **Credit**: `Equity:Clearing:Distribution`
 
-1. `tabula-area.csv` must be specified to extract data from pdf
-1. `tax-acc.csv` must be configured for each label
+2. **At Year-End (Annual Tax Statement Import)**:
+   Importing the CSV split transactions:
+   - **Credits** your tax income sub-accounts (`13C`, `13U`, `18H`, `20E/20M`) with gross tax income.
+   - **Debits** `Equity:Clearing:Distribution` by the net cash amount, **clearing out the clearing account to exactly `$0.00`**.
 
-The `tabula-area.csv` file in the distribution is user-configurable,
-For example,
-change the second line to read the address entity instead of the HIN.
+3. **Result at Book Closing**:
+   - `Equity:Clearing:Distribution` balance = **`$0.00`**
+   - Parent `Income:Distribution` contains **zero direct debit clutter**, preserving clean gross tax income sub-account balances for trust tax return preparation and beneficiary distributions.
 
-Tax account configuration is required in a user-configurable `tax-acc.csv`
-file containing the following fields:
+---
 
-1. `Label` - first part uses tax codes, second part uses strings in pdf labels
-1. `Description` - details are optional
-1. `Type` - `CR` or `DB` account
-1. `Account` - users cashbook chart of account code
+## Standard Tax Account Mapping Reference
 
-## Sample Output
+Tax component account mappings are configured in `tax-acc.csv`:
 
-Look at the sample in the `Tax` folder.
+| Tax Code / Label | Description | Account Type | GnuCash Chart of Accounts |
+| :--- | :--- | :---: | :--- |
+| **13C** | Franked Distributions | Credit | `Income:Distribution:13C` |
+| **13Q** | Franking Credits Offset | Credit | `Income:Distribution:13Q` |
+| **13U** | Unfranked Distributions (CFI) | Credit | `Income:Distribution:13U` |
+| **18H** | Capital Gains (18A Net + GrossUp) | Credit | `Income:Distribution:18H` |
+| **20E / 20M** | Assessable Foreign Source Income | Credit | `Income:Distribution:20E/20M` |
+| **20F** | NZ Franking Credits | Credit | `Income:Distribution:20F` |
+| **20O** | Foreign Income Tax Offset (FITO) | Credit | `Income:Distribution:20O` |
+| **Cost Base** | AMIT Cost Base Increase / Decrease | Debit / Credit | `Asset:Shares:CostBase` |
+| **Cash Payout** | Net Distribution Paid | Debit | `Equity:Clearing:Distribution` |
+| **Rounding** | Balancing Residual Adjustment | Credit | `Income:Distribution:Rounding` |
 
-    etf2cb tax\VAS-annual-tax-statement-2018 vanguard
+---
+
+## Sample Multi-Split CSV Output
+
+### ETF Annual Statement Split Example (VDHG)
 
 ```csv
 Entity,Date,Description,Account,Deposit
-X0123456789,30/06/2018,VAS,Income:Distribution:13U,-3606.42
-X0123456789,30/06/2018,VAS,Income:Distribution:13C,-22870.71
-X0123456789,30/06/2018,VAS,Income:Distribution:13Q,7069.35
-X0123456789,30/06/2018,VAS,Income:Distribution:18H:18A,-1568.43
-X0123456789,30/06/2018,VAS,Income:Distribution:18H:GCTGrossUp,-1567.05
-X0123456789,30/06/2018,VAS,Income:Distribution:20E/20M,-463.54
-X0123456789,30/06/2018,VAS,Income:Distribution:20O,15.64
-X0123456789,30/06/2018,VAS,Asset:Shares:CostBase,-62.21
-X0123456789,30/06/2018,VAS,Income:Distribution,23053.38
-X0123456789,30/06/2018,VAS,Income:Distribution:Rounding,-0.01
+X******6135,30/06/2026,VDHG,Income:Distribution:13U,-344.25
+X******6135,30/06/2026,VDHG,Income:Distribution:13C,-399.27
+X******6135,30/06/2026,VDHG,Income:Distribution:13Q,127.33
+X******6135,30/06/2026,VDHG,Income:Distribution:18H:18A,-471.73
+X******6135,30/06/2026,VDHG,Income:Distribution:18H:GCTGrossUp,-471.73
+X******6135,30/06/2026,VDHG,Income:Distribution:20E/20M,-449.63
+X******6135,30/06/2026,VDHG,Income:Distribution:20O,48.42
+X******6135,30/06/2026,VDHG,Asset:Shares:CostBase,297.34
+X******6135,30/06/2026,VDHG,Equity:Clearing:Distribution,1663.52
 ```
 
-There are many ways to accumulate the splits for all ETFs by entity and year.
+### Individual Share Dividend Split Example (SOL)
 
-A simple way is to concatenate all csv files then open it in a spreadsheet
-and do a pivot table.
-For example, Pivot Table Layout:
-Filters - [ETF] Description, Row Fields - Account, Data Fields - Sum Deposit.
+```csv
+Entity,Date,Description,Account,Deposit
+X******6135,14/05/2026,SOL,Income:Distribution:13C,-637.44
+X******6135,14/05/2026,SOL,Income:Distribution:13Q,-273.19
+X******6135,14/05/2026,SOL,Asset:TaxCredits:Franking,273.19
+X******6135,14/05/2026,SOL,Equity:Clearing:Distribution,637.44
+```
 
-In GnuCash use:
-1. File, Import, Import Transactions from csv,
-1. Next, Select ETF-Annual-Statement_split.csv, Next,
-1. Leading lines to skip: 1, Date format: d-m-y, Select Multi-split
-1. Select Date, Description, Account, Deposit, Next
-1. Map Account ID to Account Name, Next, Next, Close
+---
 
+## Importing into GnuCash
+
+1. Open GnuCash and select **File -> Import -> Import Transactions from CSV...**
+2. Choose either `Tax\combined_split_statements.csv` or `Tax\IndidividualPayments\individual_payments_splits.csv`.
+3. Set **Leading lines to skip: 1** and select **Multi-split**.
+4. Set **Date Format: d-m-y**.
+5. Map CSV columns:
+   - Column 1 -> **Entity**
+   - Column 2 -> **Date**
+   - Column 3 -> **Description**
+   - Column 4 -> **Account**
+   - Column 5 -> **Deposit**
+6. Map GnuCash Account IDs to your Chart of Accounts and click **Apply**.
+
+---
 
 ## License
 
