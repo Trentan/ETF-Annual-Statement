@@ -1,63 +1,19 @@
 import glob
-import subprocess
-import sys
 import os
-from pathlib import Path
+import etf2cb
 
-base_dir = Path(__file__).resolve().parent
-python_exe = sys.executable  # uses same interpreter IntelliJ runs
+providers = [
+    (r"tax\statements\vanguard*.pdf", "vanguard"),
+    (r"tax\statements\beta*.pdf", "beta"),
+    (r"tax\statements\globalx*.pdf", "globalx"),
+    (r"tax\statements\vaneck*.pdf", "vaneck"),
+    (r"tax\statements\ishares*.pdf", "ishares"),
+]
 
-for file in glob.glob(r"tax\statements\vanguard*.pdf"):
-    print(f"Processing {file}...")
-    try:
-        subprocess.run(
-            [python_exe, os.path.join(base_dir, "etf2cb.py"), file, "vanguard"],
-            check=True,
-            cwd=base_dir
-        )
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Failed on {file}: {e}")
-
-for file in glob.glob(r"tax\statements\beta*.pdf"):
-    print(f"Processing {file}...")
-    try:
-        subprocess.run(
-            [python_exe, os.path.join(base_dir, "etf2cb.py"), file, "beta"],
-            check=True,
-            cwd=base_dir
-        )
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Failed on {file}: {e}")
-
-for file in glob.glob(r"tax\statements\globalx*.pdf"):
-    print(f"Processing {file}...")
-    try:
-        subprocess.run(
-            [python_exe, os.path.join(base_dir, "etf2cb.py"), file, "globalx"],
-            check=True,
-            cwd=base_dir
-        )
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Failed on {file}: {e}")
-
-for file in glob.glob(r"tax\statements\vaneck*.pdf"):
-    print(f"Processing {file}...")
-    try:
-        subprocess.run(
-            [python_exe, os.path.join(base_dir, "etf2cb.py"), file, "vaneck"],
-            check=True,
-            cwd=base_dir
-        )
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Failed on {file}: {e}")
-
-for file in glob.glob(r"tax\statements\ishares*.pdf"):
-    print(f"Processing {file}...")
-    try:
-        subprocess.run(
-            [python_exe, os.path.join(base_dir, "etf2cb.py"), file, "ishares"],
-            check=True,
-            cwd=base_dir
-        )
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Failed on {file}: {e}")
+for pattern, area in providers:
+    for file in glob.glob(pattern):
+        print(f"Processing {file}...", flush=True)
+        try:
+            etf2cb.process_statement(file, area)
+        except Exception as e:
+            print(f"[FAILED] on {file}: {e}", flush=True)

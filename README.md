@@ -90,7 +90,7 @@ X******6135,30/06/2026,VDHG,Income:Distribution:13U,-344.25
 X******6135,30/06/2026,VDHG,Income:Distribution:13C,-399.27
 X******6135,30/06/2026,VDHG,Income:Distribution:13Q,127.33
 X******6135,30/06/2026,VDHG,Income:Distribution:18H:18A,-471.73
-X******6135,30/06/2026,VDHG,Income:Distribution:18H:GCTGrossUp,-471.73
+X******6135,30/06/2026,VDHG,Income:Capital Gain:18H:GCTGrossUp,-471.73
 X******6135,30/06/2026,VDHG,Income:Distribution:20E/20M,-449.63
 X******6135,30/06/2026,VDHG,Income:Distribution:20O,48.42
 X******6135,30/06/2026,VDHG,Asset:Shares:CostBase,297.34
@@ -102,8 +102,7 @@ X******6135,30/06/2026,VDHG,Equity:Clearing:Distribution,1663.52
 ```csv
 Entity,Date,Description,Account,Deposit
 X******6135,14/05/2026,SOL,Income:Distribution:13C,-637.44
-X******6135,14/05/2026,SOL,Income:Distribution:13Q,-273.19
-X******6135,14/05/2026,SOL,Asset:TaxCredits:Franking,273.19
+X******6135,14/05/2026,SOL,Income:Distribution:13Q,273.19
 X******6135,14/05/2026,SOL,Equity:Clearing:Distribution,637.44
 ```
 
@@ -122,6 +121,38 @@ X******6135,14/05/2026,SOL,Equity:Clearing:Distribution,637.44
    - Column 4 -> **Account**
    - Column 5 -> **Deposit**
 6. Map GnuCash Account IDs to your Chart of Accounts and click **Apply**.
+
+---
+
+## AI Assistance Proforma & Prompt Template
+
+When requesting AI assistance in the future to parse a new individual company dividend statement (or handle a new ETF PDF layout), use the following proforma template. Copy and paste this prompt into your AI session alongside the PDF text or file extract:
+
+```markdown
+### AI Request Proforma: New Share Dividend PDF Parser
+
+I need to extend `process_individual_payments.py` in `ETF-Annual-Statement-TH` to dynamically parse a new individual share dividend PDF.
+
+1. Key Account Mapping & Sign Rules:
+   - Franked Dividend (13C) -> `Income:Distribution:13C` (Negative deposit, e.g. -637.44)
+   - Unfranked Dividend (13U) -> `Income:Distribution:13U` (Negative deposit, e.g. -510.37)
+   - Franking Credit (13Q) -> `Income:Distribution:13Q` (Positive deposit, e.g. 273.19)
+   - Capital Gain Gross-Up -> `Income:Capital Gain:18H:GCTGrossUp` (Negative deposit, e.g. -471.73)
+   - Cash Payout -> `Equity:Clearing:Distribution` (Positive deposit, e.g. 637.44)
+
+2. Extraction Requirements:
+   - Dynamic Ticker extraction (e.g. SOL, BHP, CBA)
+   - HIN / Holder Identification Number (e.g. X******6135)
+   - Payment Date (Format: DD/MM/YYYY)
+   - Financial splits (13C, 13U, 13Q, Net Cash)
+
+3. New Statement Details:
+   - Ticker: [Insert Ticker Code e.g. BHP]
+   - Statement Text / Layout:
+   [Paste PDF text extract or upload PDF file here]
+
+Please provide the updated `parse_pdf_dynamic()` block for `process_individual_payments.py`.
+```
 
 ---
 

@@ -101,13 +101,15 @@ def part_a(acc_dict, ats_list, idx_b, key, balance, writer):
                 amount = "-" + amount
             label = r[label_c]
             account = acc_dict.get(label).get("Account")
+            if label in ["13Q", "20F"]:
+                amount = "-" + amount
             if label == "18A":
                 ncg = amount
             elif label == "18H":
                 amount = "-" + amount
                 c2d = lambda x: str(x)[:-2] + '.' + str(x)[-2:]
                 amount = c2d((int(amount.replace(".", "")) - int(ncg.replace(".", ""))))
-                account = "Income:Distribution:18H:GCTGrossUp"
+                account = "Income:Capital Gain:18H:GCTGrossUp"
             if label != "20M":
                 row, balance = txn_split(key, account, amount, balance)
                 _ = writer.writerow(row)
@@ -192,39 +194,36 @@ def close_txn(acc_dict, key, balance, writer):
     return
 
 
-def main():
+def process_statement(filename, area=None):
     try:
-        args = get_args()
-        if args.filename[-4:].lower() == ".csv":
-            cdf = args.filename
-        elif args.area is None:
-            # parser.error('area argument required if no .csv filename extension')
+        if filename[-4:].lower() == ".csv":
+            cdf = filename
+        elif area is None:
             raise TypeError("area argument required if no .csv filename extension")
         else:
             # Get table from pdf
-            area = get_tabular_area('tabula-area.csv')
-            # Catch exception when tabula_area not found
+            area_data = get_tabular_area('tabula-area.csv')
             pdf = (
-                args.filename
-                if args.filename[-4:].lower() == ".pdf"
-                else args.filename + ".pdf"
+                filename
+                if filename[-4:].lower() == ".pdf"
+                else filename + ".pdf"
             )
-            tmpf = "tempfile.txt"
+            tmpf = f"tempfile_{os.getpid()}.txt"
             cdf = pdf[:-4] + ".csv"
-            # Get pdf area from tabula_area.py
-            idx_area = [i[0].lower() for i in area].index(args.area.lower())
-            for j in range(1, len(area[idx_area])):
+            idx_area = [i[0].lower() for i in area_data].index(area.lower())
+            for j in range(1, len(area_data[idx_area])):
                 tabula.convert_into(
-                    pdf, tmpf, pages=area[idx_area][j][0], area=area[idx_area][j][1], force_subprocess=True
+                    pdf, tmpf, pages=area_data[idx_area][j][0], area=area_data[idx_area][j][1], force_subprocess=True
                 )
                 with open(tmpf, "r") as sfile:
                     mode = "w" if j == 1 else "a"
                     with open(cdf, mode) as tfile:
                         tfile.write(sfile.read())
-            os.remove(tmpf)
+            if os.path.exists(tmpf):
+                os.remove(tmpf)
 
             # Modify CSV if file type is 'vaneck'
-            if getattr(args, 'area', '').lower() == 'vaneck':
+            if area.lower() == 'vaneck':
                 with open(cdf, "r") as file:
                     content = file.read()
                 content = content.replace("Part B", "TEMP_PART").replace("Part C", "Part B").replace("TEMP_PART", "Part A")
@@ -233,22 +232,12 @@ def main():
 
         csvs = cdf[:-4] + "_split.csv"
         acc_dict = csv_dictionary("tax-acc.csv")
-        # Catch exception when acc_dict not found
 
         # Process annual tax statement
-        # To a list
         with open(cdf, newline="") as ifile:
             ats_list = list(csv.reader(ifile))
-        # Get statement structure
         idx_b, _ = row_idx(ats_list, "Part B")[0]
-        # # Validate
-        # if idx b not there...
-        # Item,Amount,"Tax return
-        # idx_item = row_idx(ats_list, "Item")
-        # if idx_item[0][0] != 4:
-        #     print("Part A header - Invalid")
-        # if idx_item[1][0] != idx_b + 1:
-        #     print("Part B header - Invalid")
+
         # Row key
         key = []
         key.append(re.sub(r"\s+", '', ats_list[1][0]))  # remove whitespace
@@ -261,18 +250,20 @@ def main():
             balance = part_a(acc_dict, ats_list, idx_b, key, balance, writer)
             balance = part_b(acc_dict, ats_list, idx_b, key, balance, writer)
             close_txn(acc_dict, key, balance, writer)
-        print("done.")
+        print("done.", flush=True)
     except IndexError:
         print("Unknown statement structure, processing failed.")
-        # _ = [print(r[0]) for r in ats_list]
     except AttributeError:
-        # print(r)
         print(
             "Line",
             sys.exc_info()[-1].tb_lineno,
             "- Item label does not occur in Tax Accounts, processing failed.",
         )
-        # _ = [print(r[0]) for r in ats_list]
+
+
+def main():
+    args = get_args()
+    process_statement(args.filename, args.area)
 
 
 if __name__ == "__main__":
